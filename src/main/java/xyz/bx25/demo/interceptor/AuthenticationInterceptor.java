@@ -6,8 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
+import xyz.bx25.demo.common.Response;
 import xyz.bx25.demo.common.util.JwtUtil;
 import xyz.bx25.demo.common.util.UserContext;
+
+import java.io.IOException;
 
 @Component
 public class AuthenticationInterceptor implements HandlerInterceptor {
@@ -22,8 +25,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
 
         // 简单处理：如果没有 Header 或者格式不对，直接拒绝
         if (!StringUtils.hasText(authHeader)) {
-            response.setStatus(401);
-            return false;
+            return handleAuthFail(response, "未携带token或token无效");
         }
 
         // 去掉 "Bearer " 前缀（如果前端传了的话），这里做个简单兼容
@@ -37,9 +39,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         // 3. 【核心防御】校验是否存在
         // 如果 Token 被篡改，或者字段缺失，这里会是 null
         if (!StringUtils.hasText(userId) || !StringUtils.hasText(tenantId)|| !StringUtils.hasText(roleKey)) {
-            response.setStatus(401); // 401 未授权
-            response.getWriter().write("Invalid Token: Missing critical claims");
-            return false;
+            return handleAuthFail(response, "token无效");
         }
 
         // 4. 存入 ThreadLocal，后续 Service 直接用
@@ -52,5 +52,21 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
         // 请求结束，必须清理 ThreadLocal，防止内存泄漏或线程复用导致的数据混乱
         UserContext.clear();
+    }
+
+    private boolean handleAuthFail(HttpServletResponse response, String msg) throws IOException {
+        response.setStatus(401); // 设置 HTTP 状态码
+        response.setContentType("application/json;charset=UTF-8"); // 设置响应类型
+
+        // 构建统一响应对象 (假设你的 Response 类有 error 方法)
+        Response<Void> errorResponse = Response.error(msg);
+
+        // 序列化成 JSON 字符串 (这里使用 FastJson，也可以用 Jackson)
+        String jsonString = com.alibaba.fastjson.JSON.toJSONString(errorResponse);
+
+        // 写入响应流
+        response.getWriter().write(jsonString);
+
+        return false; // 拦截请求
     }
 }
