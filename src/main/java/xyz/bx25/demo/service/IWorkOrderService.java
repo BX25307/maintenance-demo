@@ -7,14 +7,6 @@ import xyz.bx25.demo.model.vo.OrderDetailVO;
 
 import java.util.List;
 
-public interface IWorkOrderService {
-    String submitOrder(OrderSubmitDTO dto);
+public class IWorkOrderService {
 
-    void assignOrder(OrderAssignDTO dto);
-
-    void finishOrder(String orderId, String repairResult);
-
-    List<OrderDetailVO> queryOrderList(String userId);
-
-    OrderDetailVO getOrderDetail(String orderId);
 }

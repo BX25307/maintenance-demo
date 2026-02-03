@@ -6,14 +6,14 @@ import org.springframework.web.bind.annotation.*;
 import xyz.bx25.demo.common.Response;
 import xyz.bx25.demo.model.dto.LoginDTO;
 import xyz.bx25.demo.model.vo.LoginVO;
-import xyz.bx25.demo.service.IAuthService;
+import xyz.bx25.demo.service.AuthService;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     @Autowired
-    private IAuthService authService;
+    private AuthService authService;
 
     /**
      * 用户登录

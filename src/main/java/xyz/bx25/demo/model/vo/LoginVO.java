@@ -1,8 +1,10 @@
 package xyz.bx25.demo.model.vo;
 
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 public class LoginVO {
     private String token;      // 核心：访问令牌
     private String userId;     // 用户ID

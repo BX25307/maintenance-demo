@@ -21,7 +21,6 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         String authHeader = request.getHeader("Authorization");
 
         // 简单处理：如果没有 Header 或者格式不对，直接拒绝
-        // 实际项目中可能要允许部分接口匿名访问（通过配置排除拦截）
         if (!StringUtils.hasText(authHeader)) {
             response.setStatus(401);
             return false;
