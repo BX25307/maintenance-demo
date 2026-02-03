@@ -63,6 +63,6 @@ public class JwtUtil {
 
     public String getRole(String token) {
         DecodedJWT jwt = verifyToken(token);
-        return jwt != null ? jwt.getClaim("role").asString() : null;
+        return jwt != null ? jwt.getClaim("roleKey").asString() : null;
     }
 }

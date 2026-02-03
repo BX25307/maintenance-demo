@@ -52,7 +52,7 @@ public class SysUser implements Serializable {
 
     /**
      * 角色标识
-     * ADMIN-管理员, BOSS-老板/普通用户, REPAIRMAN-维修员
+     * ADMIN-管理员, User-老板/普通用户, REPAIRMAN-维修员
      * (后续建议配合 Spring Security 权限注解使用)
      */
     private String roleKey;

@@ -10,7 +10,7 @@ import xyz.bx25.demo.common.Response;
 import xyz.bx25.demo.model.dto.OrderAssignDTO;
 import xyz.bx25.demo.model.dto.OrderSubmitDTO;
 import xyz.bx25.demo.model.vo.OrderDetailVO;
-import xyz.bx25.demo.service.IWorkOrderService;
+import xyz.bx25.demo.service.WorkOrderService;
 
 import java.util.List;
 
@@ -19,7 +19,7 @@ import java.util.List;
 public class WorkOrderController {
 
     @Autowired
-    private IWorkOrderService workOrderService;
+    private WorkOrderService workOrderService;
 
     /**
      * 1. 用户扫码报修
@@ -27,7 +27,6 @@ public class WorkOrderController {
      */
     @PostMapping("/submit")
     public Response<String> submitOrder(@RequestBody @Validated OrderSubmitDTO dto) {
-        // userId 通常从 Token 获取，这里先模拟直接传或者在 Service 里处理
         String orderId = workOrderService.submitOrder(dto);
         return Response.success(orderId);
     }
@@ -54,12 +53,12 @@ public class WorkOrderController {
     }
 
     /**
-     * 4. 查询工单列表 (老板看自己的，管理员看全部)
+     * 4. 查询工单列表 (老板看自己的，管理员看全部或指定工单(报修人))
      * GET /api/work-order/list?userId=xxx
      */
     @GetMapping("/list")
-    public Response<List<OrderDetailVO>> listOrders(@RequestParam(required = false) String userId) {
-        List<OrderDetailVO> list = workOrderService.queryOrderList(userId);
+    public Response<List<OrderDetailVO>> listOrders(@RequestParam(required = false) String queryUserId) {
+        List<OrderDetailVO> list = workOrderService.queryOrderList(queryUserId);
         return Response.success(list);
     }
 

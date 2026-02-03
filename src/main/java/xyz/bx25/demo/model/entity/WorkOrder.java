@@ -1,6 +1,7 @@
 package xyz.bx25.demo.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
  *
  * @author Bx25
  */
+@Builder
 @Data
 @TableName("work_order")
 public class WorkOrder implements Serializable {
@@ -25,11 +27,6 @@ public class WorkOrder implements Serializable {
      */
     @TableId(type = IdType.ASSIGN_ID)
     private String orderId;
-
-    /**
-     * 业务展示单号 (例如: WO20260202001)
-     */
-    private String orderSn;
 
     /**
      * 关联的设备ID

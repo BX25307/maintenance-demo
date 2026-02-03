@@ -4,7 +4,7 @@ package xyz.bx25.demo.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import xyz.bx25.demo.common.Response;
-import xyz.bx25.demo.service.IRepairmanService;
+import xyz.bx25.demo.service.RepairmanService;
 
 
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.Map;
 public class RepairmanController {
 
     @Autowired
-    private IRepairmanService repairmanService;
+    private RepairmanService repairmanService;
 
     /**
      * 查询所有空闲的维修工 (用于管理员派单下拉框)
