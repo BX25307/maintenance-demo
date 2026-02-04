@@ -1,61 +1,50 @@
 package xyz.bx25.demo.model.entity;
 
-
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Builder;
 import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * <p>
- * 工单操作流水日志表
- * </p>
- *
- * @author Bx25
+ * 工单操作日志表
  */
+@Builder
 @Data
 @TableName("work_order_log")
 public class WorkOrderLog implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 日志ID (数据库自增)
-     */
     @TableId(type = IdType.AUTO)
     private Long logId;
 
-    /**
-     * 关联的工单ID
-     */
+    /** 关联工单ID */
     private String orderId;
 
-    /**
-     * 操作人ID
-     */
+    /** 操作人ID */
     private String operatorId;
 
     /**
      * 操作人角色
-     * USER, ADMIN, REPAIRMAN
+     * 标识执行操作的用户类型
+     * @see xyz.bx25.demo.common.enums.UserTypeEnum
+     * 可选值：USER(普通用户), BOSS(老板), REPAIRMAN(维修员), ADMIN(管理员)
      */
     private String operatorRole;
 
     /**
      * 动作类型
-     * CREATE, ASSIGN, START, FINISH, CANCEL
-     * (建议对应 enums 包下的 ActionTypeEnum)
+     * 标识对工单执行的具体操作
+     * @see xyz.bx25.demo.common.enums.ActionTypeEnum
+     * 可选值：CREATE(创建工单), ASSIGN(指派维修员), TRANSFER(转单), 
+     *        FINISH(完成维修), APPEAL(申诉), PAY(支付), CANCEL(取消工单)
      */
     private String actionType;
 
-    /**
-     * 动作备注/描述
-     */
+    /** 操作备注/详情 */
     private String actionDesc;
 
-    /**
-     * 操作时间
-     */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

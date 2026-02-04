@@ -3,55 +3,58 @@ package xyz.bx25.demo.model.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Builder;
 import lombok.Data;
-
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * <p>
- * 维修工单主表
- * </p>
- *
- * @author Bx25
+ * 维修工单表
+ * 包含：业务信息、详细地址、财务结算、申诉记录
  */
 @Builder
 @Data
 @TableName("work_order")
 public class WorkOrder implements Serializable {
+    //todo  加上租户id
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 工单唯一标识 (主键)
-     * type = IdType.ASSIGN_ID: 自动生成雪花算法ID (如果是String类型会转为字符串)
-     */
-    @TableId(type = IdType.ASSIGN_ID)
+    @TableId(type = IdType.INPUT) // 或 IdType.INPUT，取决于你是否自己生成ID
     private String orderId;
 
     /**
-     * 关联的设备ID
+     * 业务展示单号 (如 WO20231027001)
+     */
+    private String orderSn;
+
+    /**
+     * 关联设备ID
      */
     private String deviceId;
-
     /**
-     * 老板ID (冗余存储，优化查询)
+     * 设备名称
      */
-    private String ownerId;
+    private String deviceName;
 
     /**
-     * 报修人ID (扫码的用户)
+     * 报修人ID
      */
     private String reporterId;
 
     /**
-     * 派单管理员ID
+     * 设备老板ID
      */
-    private String adminId;
+    private String ownerId;
 
     /**
-     * 维修员ID
+     * 维修工ID (待接单时为空)
      */
     private String repairmanId;
+
+    /**
+     * 详细维修地址 (报修时手动填入，快照保存)
+     */
+    private String addressDetail;
 
     /**
      * 故障描述
@@ -59,52 +62,64 @@ public class WorkOrder implements Serializable {
     private String faultDesc;
 
     /**
-     * 故障图片 (JSON或URL字符串)
+     * 故障图片 (JSON数组)
      */
     private String faultImages;
 
     /**
-     * 维修结果反馈
+     * 维修结果/完工备注
      */
     private String repairResult;
 
     /**
-     * 工单状态
-     * 0:待派单, 1:已派单, 2:维修中, 3:已完成, 4:已取消
-     * (建议对应 enums 包下的 OrderStatusEnum)
+     * 完工凭证图片 (JSON数组)
+     */
+    private String repairImages;
+
+    /**
+     * 订单状态
+     *
+     * @see xyz.bx25.demo.common.enums.OrderStatusEnum
+     * 0:待接单 1:维修中 3:待支付 4:已取消 5:已完成 6:申诉中
      */
     private Integer orderStatus;
 
-    /**
-     * 租户ID (多租户隔离)
-     */
-    private String tenantId;
+    // ================= 财务结算字段 =================
 
     /**
-     * 创建时间
+     * 材料费 (实报实销)
      */
-    @TableField(fill = FieldFill.INSERT) // 自动填充
-    private LocalDateTime createTime;
+    private BigDecimal materialFee;
 
     /**
-     * 派单时间
+     * 人工费 (技术服务费，需抽成)
      */
-    private LocalDateTime assignTime;
+    private BigDecimal laborFee;
 
     /**
-     * 完结时间
+     * 总金额 (老板应付 = 材料+人工)
      */
-    private LocalDateTime finishTime;
+    private BigDecimal totalAmount;
 
     /**
-     * 更新时间
+     * 费率快照 (如 0.10)
      */
-    @TableField(fill = FieldFill.INSERT_UPDATE) // 自动填充
-    private LocalDateTime updateTime;
+    private BigDecimal platformRate;
 
     /**
-     * 逻辑删除 (0:未删除, 1:已删除)
+     * 平台分润 (人工 * 费率)
      */
-    @TableLogic
-    private Integer isDeleted;
+    private BigDecimal platformIncome;
+
+    /**
+     * 维修工实收 (总额 - 平台分润)
+     */
+    private BigDecimal repairmanIncome;
+
+    // ================= 申诉字段 =================
+
+    /**
+     * 老板申诉理由
+     */
+    private String appealReason;
 }

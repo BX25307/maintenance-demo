@@ -6,11 +6,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * <p>
- * 维修人员业务扩展表 (1:1 关联 SysUser)
- * </p>
- *
- * @author Bx25
+ * 维修工扩展信息表
  */
 @Data
 @TableName("repairman_info")
@@ -18,46 +14,29 @@ public class RepairmanInfo implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 维修工信息唯一标识 (主键)
-     */
-    @TableId(type = IdType.ASSIGN_ID)
+    /** 维修工ID (通常与 userId 一致，或独立生成) */
+    @TableId(type = IdType.INPUT)
     private String repairmanId;
 
-    /**
-     * 关联的用户ID (核心外键 -> sys_user.user_id)
-     * 通过这个字段去 sys_user 表查名字和电话
-     */
+    /** 关联系统用户ID */
     private String userId;
 
-    /**
-     * 业务状态
-     * 0:空闲-可接单, 1:忙碌-维修中
-     * (建议对应 model.enums.WorkStatusEnum)
+    /** * 工作状态
+     * 0:空闲 1:忙碌
      */
     private Integer workStatus;
 
-    /**
-     * 租户ID
-     */
+    /** 服务省份 (如 "广东省") */
+    private String provinceName;
+
+    /** 服务城市 (如 "深圳市") */
+    private String cityName;
+
     private String tenantId;
 
-    /**
-     * 创建时间
-     */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 
-    /**
-     * 更新时间
-     */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
-
-    /**
-     * 逻辑删除
-     * 0:正常, 1:已删除
-     */
-    @TableLogic
-    private Integer isDeleted;
 }

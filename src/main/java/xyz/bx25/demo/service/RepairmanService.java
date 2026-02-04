@@ -10,7 +10,4 @@ import java.util.Map;
 @Service
 public class RepairmanService extends ServiceImpl<RepairmanInfoMapper, RepairmanInfo> {
 
-    public List<Map<String, Object>> getIdleRepairmen() {
-        return null;
-    }
 }
