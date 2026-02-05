@@ -68,6 +68,9 @@ public class WorkOrderService extends ServiceImpl<WorkOrderMapper, WorkOrder> {
     }
 
 
+    /**
+     * 执行提交工单的业务逻辑（事务方法）
+     */
     @Transactional(rollbackFor = Exception.class)
     public String submitOrder(OrderSubmitDTO dto) {
         String userId = UserContext.getUserId();
@@ -75,11 +78,16 @@ public class WorkOrderService extends ServiceImpl<WorkOrderMapper, WorkOrder> {
 
         DeviceInfo deviceInfo = deviceInfoMapper.selectById(dto.getDeviceId());
         if(deviceInfo==null){
-            throw new RuntimeException("设备不存在");
+            throw new BusinessException("设备不存在");
         }
         if(!deviceInfo.getTenantId().equals(tenantId)){
-            throw new RuntimeException("非法操作:设备不属于当前租户");
+            throw new BusinessException("非法操作:设备不属于当前租户");
         }
+        String role = UserContext.getRoleKey();
+        if(!role.equals(UserTypeEnum.USER.getCode())){
+            throw new BusinessException("权限不足");
+        }
+
         String orderId = UUID.randomUUID().toString().replace("-", "");
         String sn = "MAINTENANCE" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
                 + ThreadLocalRandom.current().nextInt(100, 999);
@@ -87,6 +95,7 @@ public class WorkOrderService extends ServiceImpl<WorkOrderMapper, WorkOrder> {
         WorkOrder workOrder = WorkOrder.builder()
                 .orderId(orderId)
                 .orderSn(sn)
+                .tenantId(tenantId)
                 .deviceId(dto.getDeviceId())
                 .deviceName(deviceInfo.getDeviceName())
                 .orderStatus(OrderStatusEnum.PENDING.getCode())
@@ -194,6 +203,7 @@ public class WorkOrderService extends ServiceImpl<WorkOrderMapper, WorkOrder> {
                 .operatorId(operatorId)
                 .operatorRole(role.getCode())
                 .actionType(action.getCode())
+                .actionDesc(desc)
                 .build();
         workOrderLogMapper.insert(workOrderLog);
     }

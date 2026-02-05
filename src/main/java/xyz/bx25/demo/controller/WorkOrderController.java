@@ -65,12 +65,7 @@ public class WorkOrderController {
         return Response.success(workOrderService.queryOrderList(page, status));
     }
 
-    // Controller
-    @GetMapping("/pool")
-    public Response<Page<? extends OrderListSimpleVO>> queryPool(@ModelAttribute Page<WorkOrder> page) {
-        // 强制只查 status=PENDING
-        return Response.success(workOrderService.queryOrderList(page, OrderStatusEnum.PENDING.getCode()));
-    }
+
 
     /**
      * 1.5 查询工单详情
@@ -112,5 +107,16 @@ public class WorkOrderController {
         }
         workOrderService.assignOrder(dto);
         return Response.success();
+    }
+    /**
+     * 2.3 查询待派单工单列表
+     * 用于“工单池”页面，展示轻量级数据。
+     * @param page 分页对象
+     * @return 分页列表数据
+     */
+    @GetMapping("/pool")
+    public Response<Page<? extends OrderListSimpleVO>> queryPool(@ModelAttribute Page<WorkOrder> page) {
+        // 强制只查 status=PENDING
+        return Response.success(workOrderService.queryOrderList(page, OrderStatusEnum.PENDING.getCode()));
     }
 }

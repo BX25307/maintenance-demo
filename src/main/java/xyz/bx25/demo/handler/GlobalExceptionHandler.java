@@ -6,15 +6,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import xyz.bx25.demo.common.Response;
+import xyz.bx25.demo.common.exception.BusinessException;
+
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 捕获所有 RuntimeException
+    // 捕获业务异常
+    @ExceptionHandler(BusinessException.class)
+    public Response<Void> handleBusinessException(BusinessException e) {
+        log.error("业务异常: {}", e.getMessage());
+        return Response.error(e.getMessage());
+    }
+
+    // 捕获所有 RuntimeException（除BusinessException外）
     @ExceptionHandler(RuntimeException.class)
     public Response<Void> handleRuntimeException(RuntimeException e) {
-        log.error("业务异常: {}", e.getMessage());
-        return Response.error(e.getMessage()); // 这里的 error 方法需要在 Response 类里确认一下实现
+        log.error("运行时异常: {}", e.getMessage(), e);
+        return Response.error(e.getMessage());
     }
 
     // 捕获参数校验异常 (LoginDTO 里的 @NotBlank 触发的)

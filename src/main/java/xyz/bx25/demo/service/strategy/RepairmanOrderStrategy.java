@@ -23,6 +23,10 @@ public class RepairmanOrderStrategy extends AbstractOrderStrategy {
 
     @Override
     public LambdaQueryWrapper<WorkOrder> buildQueryWrapper(String userId, String tenantId, Integer status) {
+        if(OrderStatusEnum.PENDING.getCode()==status){
+            return createBaseWrapper(tenantId, status)
+                    .isNull(WorkOrder::getRepairmanId);
+        }
         // 规则：复用基础条件 + 指派给我的
         return createBaseWrapper(tenantId, status)
                 .eq(WorkOrder::getRepairmanId, userId);
