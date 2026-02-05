@@ -126,4 +126,49 @@ public class WorkOrder implements Serializable {
      * 老板申诉理由
      */
     private String appealReason;
+
+    /**
+     * 管理员申诉处理记录
+     */
+    private String appealHandleLog;
+
+    // ================= 时间字段 =================
+
+    /**
+     * 报修时间
+     */
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+
+    /**
+     * 接单/派单时间
+     */
+    private LocalDateTime dispatchTime;
+
+    /**
+     * 维修工到达现场时间
+     */
+    private LocalDateTime arriveTime;
+
+    /**
+     * 完工录入时间
+     */
+    private LocalDateTime finishTime;
+
+    /**
+     * 老板支付/结单时间
+     */
+    private LocalDateTime payTime;
+
+    /**
+     * 更新时间
+     */
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
+
+    /**
+     * 是否删除 (0:未删除, 1:已删除)
+     */
+    @TableLogic
+    private Integer isDeleted;
 }

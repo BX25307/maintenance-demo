@@ -1,11 +1,16 @@
 package xyz.bx25.demo.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import xyz.bx25.demo.common.Response;
+import xyz.bx25.demo.common.enums.OrderStatusEnum;
+import xyz.bx25.demo.common.enums.UserTypeEnum;
+import xyz.bx25.demo.common.util.UserContext;
+import xyz.bx25.demo.model.dto.OrderAssignDTO;
 import xyz.bx25.demo.model.dto.order.OrderSubmitDTO;
+import xyz.bx25.demo.model.entity.WorkOrder;
 import xyz.bx25.demo.model.vo.OrderDetailVO;
 import xyz.bx25.demo.model.vo.order.OrderListSimpleVO;
 import xyz.bx25.demo.service.WorkOrderService;
@@ -53,11 +58,18 @@ public class WorkOrderController {
      * @return 分页列表数据
      */
     @GetMapping("/my-list")
-    public Response<Page<OrderListSimpleVO>> queryMyOrderList(@ModelAttribute Page page,
+    public Response<Page<? extends OrderListSimpleVO>> queryMyOrderList(@ModelAttribute Page<WorkOrder> page,
                                                               @RequestParam(required = false) Integer status) {
         // 服务层逻辑：从 UserContext 获取当前 userId，执行分页查询
         // 返回轻量级 VO (只含 ID、设备名、状态文本、时间)
         return Response.success(workOrderService.queryOrderList(page, status));
+    }
+
+    // Controller
+    @GetMapping("/pool")
+    public Response<Page<? extends OrderListSimpleVO>> queryPool(@ModelAttribute Page<WorkOrder> page) {
+        // 强制只查 status=PENDING
+        return Response.success(workOrderService.queryOrderList(page, OrderStatusEnum.PENDING.getCode()));
     }
 
     /**
@@ -68,8 +80,37 @@ public class WorkOrderController {
      * @return 完整详情 VO
      */
     @GetMapping("/detail/{orderId}")
-    public Response<OrderDetailVO> getOrderDetail(@PathVariable("orderId") String orderId) {
+    public Response<OrderDetailVO> getOrderDetail(@PathVariable String orderId) {
         // 服务层逻辑：组装完整数据，包含时间轴日志
         return Response.success(workOrderService.getOrderDetail(orderId));
+    }
+
+    /**
+     * 2.1 维修工抢单
+     * POST /api/work-order/grab?orderId=xxx
+     */
+    @PostMapping("/grab")
+    public Response<Void> grabOrder(@RequestParam("orderId") String orderId) {
+        // 鉴权：只有维修工能抢
+        if (!UserTypeEnum.REPAIRMAN.getCode().equals(UserContext.getRoleKey())) {
+            return Response.error("无权操作");
+        }
+        workOrderService.grabOrder(orderId);
+        return Response.success();
+    }
+
+    /**
+     * 2.2 管理员派单
+     * POST /api/work-order/assign
+     */
+    @PostMapping("/assign")
+    public Response<Void> assignOrder(@RequestBody @Valid OrderAssignDTO dto) {
+        // 鉴权：只有管理员/老板能派
+        String role = UserContext.getRoleKey();
+        if (!UserTypeEnum.ADMIN.getCode().equals(role) && !UserTypeEnum.BOSS.getCode().equals(role)) {
+            return Response.error("无权操作");
+        }
+        workOrderService.assignOrder(dto);
+        return Response.success();
     }
 }

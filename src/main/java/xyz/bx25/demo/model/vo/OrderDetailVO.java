@@ -1,30 +1,43 @@
 package xyz.bx25.demo.model.vo;
 
-import lombok.Builder;
 import lombok.Data;
-import xyz.bx25.demo.common.enums.OrderStatusEnum;
-
+import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-@Builder
+import java.util.List;
+
 @Data
-public class OrderDetailVO {
-    private String orderId;// 工单号
-    private String deviceId;   // 设备ID
+public class OrderDetailVO implements Serializable {
+    // --- 基础信息 ---
+    private String orderId;
+    private String orderSn;
+    private String deviceId;
+    private String deviceName; // 需关联查询
+    private String deviceSn;   // 辅助设备识别
 
-    private String faultDesc;  // 故障描述
-    private String faultImages;
+    // --- 核心业务 ---
+    private String faultDesc;
+    private String faultImages; // JSON string or List
+    private String addressDetail; // 📍 核心：维修地址
 
-    private String reporterId; // 报修人
-    private LocalDateTime createTime;
+    // --- 状态与人员 ---
+    private Integer orderStatus;
+    private String statusText;
+    private String reporterName;
+    private String repairmanName;
 
-    private Integer orderStatus; // 状态码 (1,2,3)
-    private String statusText;   // 状态文本 (待派单, 维修中...)
-
-    private String repairmanId;  // 维修工
-    private LocalDateTime assignTime;
-
+    // --- 结果与财务 (根据权限动态填充) ---
     private String repairResult;
-    private LocalDateTime finishTime;
+    private String repairImages;
 
+    private BigDecimal materialFee;
+    private BigDecimal laborFee;
+    private BigDecimal totalAmount; // 用户/老板可见
+
+    // --- 时间轴 ---
+    private LocalDateTime createTime;
+    private LocalDateTime dispatchTime;
+    private LocalDateTime finishTime;
+    private LocalDateTime payTime;
 
 }
