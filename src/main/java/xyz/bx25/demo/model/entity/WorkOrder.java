@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 @Data
 @TableName("work_order")
 public class WorkOrder implements Serializable {
-    //todo  加上租户id
 
     private static final long serialVersionUID = 1L;
 
@@ -26,6 +25,11 @@ public class WorkOrder implements Serializable {
      * 业务展示单号 (如 WO20231027001)
      */
     private String orderSn;
+
+    /**
+     * 租户ID
+     */
+    private String tenantId;
 
     /**
      * 关联设备ID
