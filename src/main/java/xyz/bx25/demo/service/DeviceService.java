@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import xyz.bx25.demo.common.util.UserContext;
 import xyz.bx25.demo.mapper.DeviceInfoMapper;
 import xyz.bx25.demo.model.entity.DeviceInfo;
-import xyz.bx25.demo.model.vo.DeviceScanVO;
+import xyz.bx25.demo.model.vo.device.DeviceScanVO;
 
 @Service
 public class DeviceService extends ServiceImpl<DeviceInfoMapper, DeviceInfo> {

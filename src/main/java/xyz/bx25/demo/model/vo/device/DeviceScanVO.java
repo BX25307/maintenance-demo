@@ -1,4 +1,4 @@
-package xyz.bx25.demo.model.vo;
+package xyz.bx25.demo.model.vo.device;
 
 import lombok.Builder;
 import lombok.Data;

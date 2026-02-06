@@ -1,10 +1,9 @@
-package xyz.bx25.demo.model.vo;
+package xyz.bx25.demo.model.vo.order;
 
 import lombok.Data;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 public class OrderDetailVO implements Serializable {

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import xyz.bx25.demo.common.enums.UserTypeEnum;
 import xyz.bx25.demo.model.entity.WorkOrder;
-import xyz.bx25.demo.model.vo.OrderDetailVO;
+import xyz.bx25.demo.model.vo.order.OrderDetailVO;
 import xyz.bx25.demo.model.vo.order.OrderListSimpleVO;
 
 public interface IOrderStrategy {

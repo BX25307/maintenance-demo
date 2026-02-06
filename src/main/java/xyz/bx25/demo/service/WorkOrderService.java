@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.Valid;
 import org.redisson.api.RLock;
@@ -14,23 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.bx25.demo.common.constants.RedisKeyConstants;
-import xyz.bx25.demo.common.enums.ActionTypeEnum;
-import xyz.bx25.demo.common.enums.OrderStatusEnum;
-import xyz.bx25.demo.common.enums.UserTypeEnum;
-import xyz.bx25.demo.common.enums.WorkStatusEnum;
+import xyz.bx25.demo.common.enums.*;
 import xyz.bx25.demo.common.exception.BusinessException;
 import xyz.bx25.demo.common.util.UserContext;
-import xyz.bx25.demo.mapper.DeviceInfoMapper;
-import xyz.bx25.demo.mapper.RepairmanInfoMapper;
-import xyz.bx25.demo.mapper.WorkOrderLogMapper;
-import xyz.bx25.demo.mapper.WorkOrderMapper;
-import xyz.bx25.demo.model.dto.OrderAssignDTO;
-import xyz.bx25.demo.model.dto.order.OrderSubmitDTO;
-import xyz.bx25.demo.model.entity.DeviceInfo;
-import xyz.bx25.demo.model.entity.RepairmanInfo;
-import xyz.bx25.demo.model.entity.WorkOrder;
-import xyz.bx25.demo.model.entity.WorkOrderLog;
-import xyz.bx25.demo.model.vo.OrderDetailVO;
+import xyz.bx25.demo.mapper.*;
+import xyz.bx25.demo.model.dto.order.*;
+import xyz.bx25.demo.model.entity.*;
+import xyz.bx25.demo.model.vo.order.OrderDetailVO;
 import xyz.bx25.demo.model.vo.order.OrderListSimpleVO;
 
 import java.math.BigDecimal;
@@ -52,6 +43,10 @@ public class WorkOrderService extends ServiceImpl<WorkOrderMapper, WorkOrder> {
     private WorkOrderLogMapper workOrderLogMapper;
     @Autowired
     private RepairmanInfoMapper repairmanInfoMapper;
+    @Autowired
+    private SysUserMapper sysUserMapper;
+    @Autowired
+    private CapitalFlowMapper capitalFlowMapper;
     @Autowired
     private List<IOrderStrategy> strategies;
     @Autowired
@@ -299,4 +294,234 @@ public class WorkOrderService extends ServiceImpl<WorkOrderMapper, WorkOrder> {
                 "管理员指派给：" + repairman.getRepairmanId());
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void finishRepair(OrderFinishDTO dto) {
+        String userId = UserContext.getUserId();
+        WorkOrder order = baseMapper.selectById(dto.getOrderId());
+        if(order==null){
+            throw new BusinessException("工单不存在");
+        }
+        if(!userId.equals(order.getRepairmanId())){
+            throw new BusinessException("无权操作此工单!!!");
+        }
+        if(OrderStatusEnum.DISPATCHED.getCode()!=order.getOrderStatus()) {
+            throw new BusinessException("工单状态异常，无法完成");
+        }
+        BigDecimal rate = order.getPlatformRate();
+        if(rate==null) {
+            rate = new BigDecimal("0.10");
+        }
+        //人工费
+        BigDecimal laborFee = dto.getLaborFee()==null?new BigDecimal("50"):dto.getLaborFee();
+        //材料费
+        BigDecimal materialFee = dto.getMaterialFee();
+        //平台分成
+        BigDecimal platformIncome= laborFee.multiply(rate);
+        //维修工收入
+        BigDecimal repairmanIncome = materialFee.add(laborFee.subtract(platformIncome));
+        //老板应付
+        BigDecimal totalAmount = laborFee.add(materialFee);
+
+        // 5. 更新工单信息
+        order.setRepairResult(dto.getRepairResult());
+        // 图片 List 转 JSON 存库
+        order.setRepairImages(JSON.toJSONString(dto.getRepairImages()));
+        order.setFeeImages(JSON.toJSONString(dto.getFeeImages()));
+
+        // 填入金额
+        order.setMaterialFee(materialFee);
+        order.setLaborFee(laborFee);
+        order.setPlatformIncome(platformIncome);
+        order.setRepairmanIncome(repairmanIncome);
+        order.setTotalAmount(totalAmount);
+
+        // 变更状态
+        order.setOrderStatus(OrderStatusEnum.PAYING.getCode()); // 3: 待支付
+        order.setFinishTime(LocalDateTime.now());
+
+        baseMapper.updateById(order);
+
+        updateRepairmanStatus(userId,WorkStatusEnum.FREE.getCode());
+
+        String desc= String.format("完工提交。总额:%.2f (材料:%.2f, 人工:%.2f)", totalAmount, materialFee, laborFee);
+        recordLog(order.getOrderId(), userId, UserTypeEnum.REPAIRMAN, ActionTypeEnum.FINISH,desc);
+    }
+    @Transactional(rollbackFor = Exception.class)
+    public void payOrder(OrderPayDTO dto) {
+        String bossId = UserContext.getUserId();
+        String tenantId = UserContext.getTenantId();
+        WorkOrder order = baseMapper.selectById(dto.getOrderId());
+        if(order==null){
+            throw new BusinessException("工单不存在");
+        }
+        if(OrderStatusEnum.PAYING.getCode()!=order.getOrderStatus()) {
+            throw new BusinessException("工单状态异常，无法支付");
+        }
+        if(!tenantId.equals(order.getTenantId())||!bossId.equals(order.getOwnerId())) {
+            throw new BusinessException("无权操作此工单!!!");
+        }
+        SysUser boss = sysUserMapper.selectById(bossId);
+        BigDecimal totalAmount = order.getTotalAmount();
+        if(boss.getBalance().compareTo(totalAmount)<0) {
+            throw new BusinessException("余额不足，无法支付,先充值！！！");
+        }
+        boss.setBalance(boss.getBalance().subtract(totalAmount));
+        sysUserMapper.updateById(boss);
+
+        String repairmanId = order.getRepairmanId();
+        if(StringUtils.isBlank(repairmanId)) {
+            throw new BusinessException("无维修员,尚未分配!");
+        }
+        SysUser repairman = sysUserMapper.selectById(repairmanId);
+        if(repairman==null) {
+            throw new BusinessException("维修员不存在");
+        }
+        BigDecimal income = order.getRepairmanIncome();
+        repairman.setBalance(repairman.getBalance().add(income));
+        sysUserMapper.updateById(repairman);
+
+        String tradeNo = "TRX" + System.currentTimeMillis();
+
+        createCapitalFlow(tradeNo, order.getOrderId(), bossId, FlowTypeEnum.PAY, totalAmount, boss.getBalance(), "支付工单", tenantId);
+
+        createCapitalFlow(tradeNo, order.getOrderId(), repairmanId, FlowTypeEnum.INCOME, income, repairman.getBalance(), "维修员收入", tenantId);
+        createCapitalFlow(tradeNo, order.getOrderId(), "SYSTEM_PLATFORM", FlowTypeEnum.INCOME, order.getPlatformIncome(), null, "平台技术服务费", tenantId);
+        LambdaUpdateWrapper<WorkOrder> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(WorkOrder::getOrderId, dto.getOrderId())
+                .set(WorkOrder::getOrderStatus, OrderStatusEnum.FINISHED.getCode())
+                .set(WorkOrder::getPayTime, LocalDateTime.now());
+        baseMapper.update(null, wrapper);
+
+        String desc="老板确认支付，订单完成。交易额：" + totalAmount;
+        recordLog(order.getOrderId(), bossId, UserTypeEnum.BOSS, ActionTypeEnum.PAY,desc);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void appealOrder(OrderAppealDTO dto) {
+        WorkOrder order = baseMapper.selectById(dto.getOrderId());
+        if(order==null){
+            throw new BusinessException("工单不存在");
+        }
+        if(OrderStatusEnum.FINISHED.getCode()!=order.getOrderStatus()) {
+            throw new BusinessException("工单状态异常，无法申诉");
+        }
+        String bossId = UserContext.getUserId();
+        String tenantId = UserContext.getTenantId();
+        if(!tenantId.equals(order.getTenantId())||!bossId.equals(order.getOwnerId())) {
+            throw new BusinessException("无权操作此工单!!!");
+        }
+        LambdaUpdateWrapper<WorkOrder> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(WorkOrder::getOrderId, dto.getOrderId())
+                .set(WorkOrder::getOrderStatus, OrderStatusEnum.APPEAL.getCode())
+                .set(WorkOrder::getAppealReason, dto.getAppealReason());
+        baseMapper.update(null, wrapper);
+        String desc="老板发起申诉，申诉原因：" + dto.getAppealReason();
+        recordLog(order.getOrderId(), bossId, UserTypeEnum.BOSS, ActionTypeEnum.APPEAL,desc);
+    }
+    /**
+     * 辅助方法：创建资金流水
+     */
+    private void createCapitalFlow(String tradeNo, String orderId, String accountId,
+                                   FlowTypeEnum flowType, BigDecimal amount,
+                                   BigDecimal balanceSnapshot, String remark, String tenantId) {
+        CapitalFlow flow = new CapitalFlow();
+        flow.setTradeNo(tradeNo);
+        flow.setOrderId(orderId);
+        flow.setAccountId(accountId);
+        flow.setFlowType(flowType.name());
+        flow.setAmount(amount);
+        flow.setBalanceSnapshot(balanceSnapshot); // 记录变动后的余额快照
+        flow.setRemark(remark);
+        flow.setTenantId(tenantId);
+        flow.setCreateTime(LocalDateTime.now());
+
+        capitalFlowMapper.insert(flow);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void auditAdjust(OrderAdjustDTO dto) {
+        String adminId = UserContext.getUserId();
+
+        // 1. 查单
+        WorkOrder order = baseMapper.selectById(dto.getOrderId());
+        if (order == null) {
+            throw new BusinessException("工单不存在");
+        }
+
+        // 2. 状态校验：只有 [申诉中] 的工单才能进行裁决
+        if (OrderStatusEnum.APPEAL.getCode()!=order.getOrderStatus()) {
+            throw new BusinessException("操作失败：工单不在申诉状态，无法调整");
+        }
+
+        // 3. 重新计算金额 (核心：逻辑必须与完工结算保持一致)
+        // 3.1 获取费率 (沿用下单时的快照，如果没有则取默认值)
+        BigDecimal rate = order.getPlatformRate();
+        if (rate == null) {
+            rate = new BigDecimal("0.10");
+        }
+
+        BigDecimal newLaborFee = dto.getLaborFee();
+        BigDecimal newMaterialFee = dto.getMaterialFee();
+
+        // 3.2 计算各项分润
+        // 平台抽成 = 新人工费 * 费率
+        BigDecimal platformIncome = newLaborFee.multiply(rate);
+        // 总金额 = 新人工费 + 新材料费
+        BigDecimal totalAmount = newLaborFee.add(newMaterialFee);
+        // 维修工收入 = 总金额 - 平台抽成
+        BigDecimal repairmanIncome = totalAmount.subtract(platformIncome);
+
+        // 4. 执行更新
+        LambdaUpdateWrapper<WorkOrder> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(WorkOrder::getOrderId, order.getOrderId())
+                // 更新金额字段
+                .set(WorkOrder::getLaborFee, newLaborFee)
+                .set(WorkOrder::getMaterialFee, newMaterialFee)
+                .set(WorkOrder::getTotalAmount, totalAmount)
+                .set(WorkOrder::getPlatformIncome, platformIncome)
+                .set(WorkOrder::getRepairmanIncome, repairmanIncome)
+                // 核心状态流转：回退到 3 (待支付)
+                .set(WorkOrder::getOrderStatus, OrderStatusEnum.FINISHED.getCode())
+                // 记录管理员的处理记录
+                .set(WorkOrder::getAppealHandleLog, dto.getAuditRemark())
+                .set(WorkOrder::getUpdateTime, LocalDateTime.now());
+
+        baseMapper.update(null, updateWrapper);
+
+        // 5. 记录操作日志
+        recordLog(order.getOrderId(), adminId, UserTypeEnum.ADMIN, ActionTypeEnum.APPEAL,
+                String.format("管理员改判金额。新总额:%.2f (含材料:%.2f, 人工:%.2f)，理由:%s",
+                        totalAmount, newMaterialFee, newLaborFee, dto.getAuditRemark()));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void auditReject(OrderRejectDTO dto) {
+        String adminId = UserContext.getUserId();
+
+        // 1. 查单
+        WorkOrder order = baseMapper.selectById(dto.getOrderId());
+        if (order == null) {
+            throw new BusinessException("工单不存在");
+        }
+
+        // 2. 状态校验：只有 [申诉中] 的工单才能进行裁决
+        if (OrderStatusEnum.APPEAL.getCode()!=order.getOrderStatus()) {
+            throw new BusinessException("操作失败：工单不在申诉状态，无法驳回");
+        }
+
+        // 3. 执行更新
+        LambdaUpdateWrapper<WorkOrder> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(WorkOrder::getOrderId, order.getOrderId())
+                // 核心状态流转：回退到 3 (待支付)
+                .set(WorkOrder::getOrderStatus, OrderStatusEnum.FINISHED.getCode())
+                // 记录管理员的处理意见
+                .set(WorkOrder::getAppealHandleLog, dto.getAuditRemark())
+                .set(WorkOrder::getUpdateTime, LocalDateTime.now());
+
+        baseMapper.update(null, updateWrapper);
+
+        // 4. 记录操作日志
+        recordLog(order.getOrderId(), adminId, UserTypeEnum.ADMIN, ActionTypeEnum.APPEAL,
+                "管理员裁决：申诉无效，维持原判。理由：" + dto.getAuditRemark());
+    }
 }

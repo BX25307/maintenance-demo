@@ -79,6 +79,10 @@ public class WorkOrder implements Serializable {
      * 完工凭证图片 (JSON数组)
      */
     private String repairImages;
+    /**
+     * 材料费用凭证图片 (JSON数组)
+     */
+    private String feeImages;
 
     /**
      * 订单状态

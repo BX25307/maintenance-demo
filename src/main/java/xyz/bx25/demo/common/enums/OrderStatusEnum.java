@@ -7,9 +7,10 @@ import lombok.Getter;
 public enum OrderStatusEnum {
     PENDING(0, "待派单"),
     DISPATCHED(1, "已派单"),
-    REPAIRING(2, "维修中"),
+    PAYING(2, "待支付"),
     FINISHED(3, "已完成"),
-    CANCELLED(4, "已取消");
+    CANCELLED(4, "已取消"),
+    APPEAL(5, "申诉中");
 
     @EnumValue
     private final int code;

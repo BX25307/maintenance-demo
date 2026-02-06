@@ -10,9 +10,7 @@ import xyz.bx25.demo.mapper.SysUserMapper;
 import xyz.bx25.demo.model.entity.DeviceInfo;
 import xyz.bx25.demo.model.entity.SysUser;
 import xyz.bx25.demo.model.entity.WorkOrder;
-import xyz.bx25.demo.model.entity.WorkOrderLog;
-import xyz.bx25.demo.model.vo.OrderDetailVO;
-import xyz.bx25.demo.service.IOrderStrategy;
+import xyz.bx25.demo.model.vo.order.OrderDetailVO;
 
 import java.util.*;
 import java.util.stream.Collectors;

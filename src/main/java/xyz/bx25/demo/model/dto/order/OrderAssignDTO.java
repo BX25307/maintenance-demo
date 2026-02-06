@@ -1,4 +1,4 @@
-package xyz.bx25.demo.model.dto;
+package xyz.bx25.demo.model.dto.order;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

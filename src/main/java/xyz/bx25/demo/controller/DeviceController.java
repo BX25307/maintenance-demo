@@ -1,13 +1,9 @@
 package xyz.bx25.demo.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import xyz.bx25.demo.common.Response;
-import xyz.bx25.demo.common.util.UserContext;
-import xyz.bx25.demo.mapper.DeviceInfoMapper;
-import xyz.bx25.demo.model.entity.DeviceInfo;
-import xyz.bx25.demo.model.vo.DeviceScanVO;
+import xyz.bx25.demo.model.vo.device.DeviceScanVO;
 import xyz.bx25.demo.service.DeviceService;
 
 @RestController

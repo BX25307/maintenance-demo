@@ -3,15 +3,15 @@ package xyz.bx25.demo.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import xyz.bx25.demo.common.Response;
 import xyz.bx25.demo.common.enums.OrderStatusEnum;
 import xyz.bx25.demo.common.enums.UserTypeEnum;
 import xyz.bx25.demo.common.util.UserContext;
-import xyz.bx25.demo.model.dto.OrderAssignDTO;
-import xyz.bx25.demo.model.dto.order.OrderSubmitDTO;
+import xyz.bx25.demo.model.dto.order.*;
 import xyz.bx25.demo.model.entity.WorkOrder;
-import xyz.bx25.demo.model.vo.OrderDetailVO;
+import xyz.bx25.demo.model.vo.order.OrderDetailVO;
 import xyz.bx25.demo.model.vo.order.OrderListSimpleVO;
 import xyz.bx25.demo.service.WorkOrderService;
 
@@ -119,4 +119,94 @@ public class WorkOrderController {
         // 强制只查 status=PENDING
         return Response.success(workOrderService.queryOrderList(page, OrderStatusEnum.PENDING.getCode()));
     }
+
+    /**
+     * 3.1 完工与结算
+     * 维修工提交费用和凭证，系统自动计算分润
+     * POST /api/work-order/finish
+     */
+    @PostMapping("/finish")
+    public Response<Void> finishRepair(@RequestBody @Valid OrderFinishDTO dto) {
+        if (!UserTypeEnum.REPAIRMAN.getCode().equals(UserContext.getRoleKey())) {
+            return Response.error("无权操作");
+        }
+        // 鉴权与结算逻辑在 Service 做
+        workOrderService.finishRepair(dto);
+        return Response.success();
+    }
+
+    /**
+     * 4.1 确认支付
+     * 老板验收通过，进行钱包扣款
+     * POST /api/work-order/pay
+     */
+    @PostMapping("/pay")
+    public Response<Void> payOrder(@RequestBody OrderPayDTO dto) {
+        // 鉴权：只有老板(BOSS)能调
+        if (!UserTypeEnum.BOSS.getCode().equals(UserContext.getRoleKey())) {
+            return Response.error("无权操作");
+        }
+        workOrderService.payOrder(dto);
+        return Response.success();
+    }
+
+    /**
+     * 4.2 发起申诉
+     * 老板对费用或结果不满意，拒绝支付并申诉
+     * POST /api/work-order/appeal
+     */
+    @PostMapping("/appeal")
+    public Response<Void> appealOrder(@RequestBody OrderAppealDTO dto) {
+        // 鉴权：只有老板(BOSS)能调
+        if (!UserTypeEnum.BOSS.getCode().equals(UserContext.getRoleKey())) {
+            return Response.error("无权操作");
+        }
+        workOrderService.appealOrder(dto);
+        return Response.success();
+    }
+
+    /**
+     * 5.1 分页查询待申诉工单
+     * 展示轻量级数据。
+     * @param page 分页对象
+     * @return 分页列表数据
+     */
+    @GetMapping("/appealing-list")
+    public Response<Page<? extends OrderListSimpleVO>> queryMyOrderList(@ModelAttribute Page<WorkOrder> page) {
+        if(!UserContext.getRoleKey().equals(UserTypeEnum.ADMIN.getCode())){
+            return Response.error("无权操作");
+        }
+        // 服务层逻辑：从 UserContext 获取当前 userId，执行分页查询
+        // 返回轻量级 VO (只含 ID、设备名、状态文本、时间)
+        return Response.success(workOrderService.queryOrderList(page, OrderStatusEnum.APPEAL.getCode()));
+    }
+
+    /**
+     * 5.2 判定申诉合理 -> 修改金额 (改判)
+     */
+    @PostMapping("/audit/adjust")
+    public Response<Void> auditAdjust(@RequestBody @Validated OrderAdjustDTO dto) {
+        if (!UserTypeEnum.ADMIN.getCode().equals(UserContext.getRoleKey())) {
+            return Response.error("无权操作");
+        }
+        workOrderService.auditAdjust(dto);
+        return Response.success();
+    }
+
+    /**
+     * 5.3 判定申诉不合理 -> 维持原判 (驳回)
+     */
+    @PostMapping("/audit/reject")
+    public Response<Void> auditReject(@RequestBody @Validated OrderRejectDTO dto) {
+        if (!UserTypeEnum.ADMIN.getCode().equals(UserContext.getRoleKey())) {
+            return Response.error("无权操作");
+        }
+        workOrderService.auditReject(dto);
+        return Response.success();
+    }
+
+
+
+
+
 }
